@@ -5,7 +5,7 @@ import (
 	"os"
 	"path"
 
-	"github.com/carlosmpv/fullcrud/tmpls"
+	"github.com/carlosmpv/backgen/tmpls"
 )
 
 func parseArgs(args ...string) map[string]string {
