@@ -1,9 +1,9 @@
 package tmpls
 
 import (
-	"html/template"
 	"io"
 	"strings"
+	"text/template"
 )
 
 const apiTmpl = `
@@ -11,7 +11,6 @@ package {{ .Package }}
 
 import (
 	"github.com/gofiber/fiber/v2"
-	"github.com/rs/xid"
 )
 
 type pubsub interface {
@@ -21,54 +20,35 @@ type pubsub interface {
 
 func New{{ .Name }}API(ps pubsub) *fiber.App {
 	api := fiber.New()
-	registry := {{ .Name }}Registry{}
+	repo := New{{ .Name }}Repository(ps)
 
 	api.Get("/", func(c *fiber.Ctx) error {
-		result := []*{{ .Name }}{}
-		
-		err := registry.Load(ps.Get)
+		result, err := repo.GetAll()
 		if err != nil {
 			return err
-		}
-
-		for _, id := range registry {
-			model := New{{ .Name }}(id)
-			err = model.Load(ps.Get)
-			if err != nil {
-				return err
-			}
-
-			result = append(result, model)
 		}
 
 		return c.JSON(result)
 	})
 	
 	api.Post("/", func(c *fiber.Ctx) error {
-		model := New{{ .Name }}(xid.New().String())
+		model := &{{ .Name }}{}
 		
 		err := c.BodyParser(model)
 		if err != nil {
 			return err
 		}
 
-		err = model.Save(ps.Set)
+		id, err := repo.Create(model)
 		if err != nil {
 			return err
 		}
 
-		err = registry.Register(ps.Set, model.ID)
-		if err != nil {
-			return err
-		}
-
-		return c.JSON(model.ID)
+		return c.JSON(id)
 	})
 
 	api.Get("/:id", func(c *fiber.Ctx) error {
-		id := c.Params("id")
-
-		model := New{{ .Name }}(id)
+		model := New{{ .Name }}(c.Params("id"))
 		err := model.Load(ps.Get)
 		if err != nil {
 			return err
@@ -95,9 +75,7 @@ func New{{ .Name }}API(ps pubsub) *fiber.App {
 	})
 
 	api.Delete("/:id", func(c *fiber.Ctx) error {
-		id := c.Params("id")
-
-		err := registry.Delete(ps.Set, id)
+		err := repo.Delete(c.Params("id"))
 		if err != nil {
 			return err
 		}

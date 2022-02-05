@@ -1,9 +1,9 @@
 package tmpls
 
 import (
-	"html/template"
 	"io"
 	"strings"
+	"text/template"
 )
 
 const defaultValue = `{{ define "defaultValue" }}{{ if (eq . "bool") }}false{{ end }}{{ if (eq . "int" "int8" "int16" "int32" "int64" "uint" "uint8" "uint16" "uint32" "uint64" "float32" "float64") }}0{{ end }}{{ if (eq . "string")}}""{{ end }}{{ end }}`

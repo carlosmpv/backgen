@@ -39,6 +39,13 @@ func main() {
 
 	tmpls.RenderModel(renderArgs, modelsFile)
 
+	repoFile, err := os.Create("repository.go")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	tmpls.RenderRepository(renderArgs, repoFile)
+
 	apiFile, err := os.Create("api.go")
 	if err != nil {
 		log.Fatal(err)
