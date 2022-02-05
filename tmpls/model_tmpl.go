@@ -6,7 +6,7 @@ import (
 	"text/template"
 )
 
-const defaultValue = `{{ define "defaultValue" }}{{ if (eq . "bool") }}false{{ end }}{{ if (eq . "int" "int8" "int16" "int32" "int64" "uint" "uint8" "uint16" "uint32" "uint64" "float32" "float64") }}0{{ end }}{{ if (eq . "string")}}""{{ end }}{{ end }}`
+const defaultValue = `{{ define "defaultValue" }}{{ if (eq . "bool") }}false{{ end }}{{ if (eq . "int" "int8" "int16" "int32" "int64" "uint" "uint8" "uint16" "uint32" "uint64" "float32" "float64") }}0{{ end }}{{ if (eq . "string")}}""{{ end }}{{ if (isSlice .) }}{{ . }}{}{{ end }}{{ end }}`
 
 const encodeBoolTmpl = `{{ define "encodeBool" }}
 	var value []byte
@@ -28,10 +28,20 @@ const encodeNumberTmpl = `{{ define "encodeNumber" }}
 const encodeStringTmpl = `{{ define "encodeString" }}
 	value := []byte(v){{ end }}`
 
+const encodeSliceTmpl = `{{ define "encodeSlice" }}
+	buff := new(bytes.Buffer)
+	err := gob.NewEncoder(buff).Encode(v)
+	if err != nil {
+		return err
+	}
+
+	value := buff.Bytes(){{ end }}`
+
 const encoderTmpl = `{{ define "encode" }}
 {{ if (eq . "bool") }}{{ template "encodeBool" }}{{ end }}
 {{ if (eq . "int" "int8" "int16" "int32" "int64" "uint" "uint8" "uint16" "uint32" "uint64" "float32" "float64") }}{{ template "encodeNumber" }}{{ end }}
 {{ if (eq . "string")}}{{ template "encodeString" }}{{ end }}
+{{ if (isSlice .) }}{{ template "encodeSlice" }}{{ end }}
 {{ end }}`
 
 const decodeBoolTmpl = `{{ define "decodeBool" }}
@@ -48,10 +58,19 @@ const decodeNumberTmpl = `{{ define "decodeNumber" }}
 const decodeStringTmpl = `{{ define "decodeString" }}
 	value := string(v){{ end }}`
 
+const decodeSliceTmpl = `{{ define "decodeSlice" }}
+	var value {{ . }}
+	buff := bytes.NewBuffer(v)
+	err = gob.NewDecoder(buff).Decode(&v)
+	if err != nil {
+		return {{ template "defaultValue" . }}, err
+	}{{ end }}`
+
 const decoderTmpl = `{{ define "decoder" }}
 {{ if (eq . "bool") }}{{ template "decodeBool" }}{{ end }}
 {{ if (eq . "int" "int8" "int16" "int32" "int64" "uint" "uint8" "uint16" "uint32" "uint64" "float32" "float64") }}{{ template "decodeNumber" . }}{{ end }}
 {{ if (eq . "string")}}{{ template "decodeString" }}{{ end }}
+{{ if (isSlice .) }}{{ template "decodeSlice" . }}{{ end }}
 {{ end }}`
 
 const modelTmpl = `
@@ -189,6 +208,13 @@ func RenderModel(ra RenderArgs, w io.Writer) {
 		"lower": func(s string) string {
 			return strings.ToLower(s)
 		},
+		"isSlice": func(s string) bool {
+			if len(s) < 3 {
+				return false
+			}
+
+			return s[0:2] == "[]"
+		},
 	})
 
 	tmpl = template.Must(tmpl.Parse(defaultValue))
@@ -196,11 +222,13 @@ func RenderModel(ra RenderArgs, w io.Writer) {
 	tmpl = template.Must(tmpl.Parse(encodeNumberTmpl))
 	tmpl = template.Must(tmpl.Parse(encodeBoolTmpl))
 	tmpl = template.Must(tmpl.Parse(encodeStringTmpl))
+	tmpl = template.Must(tmpl.Parse(encodeSliceTmpl))
 	tmpl = template.Must(tmpl.Parse(strings.ReplaceAll(encoderTmpl, "\n", "")))
 
 	tmpl = template.Must(tmpl.Parse(decodeBoolTmpl))
 	tmpl = template.Must(tmpl.Parse(decodeNumberTmpl))
 	tmpl = template.Must(tmpl.Parse(decodeStringTmpl))
+	tmpl = template.Must(tmpl.Parse(decodeSliceTmpl))
 	tmpl = template.Must(tmpl.Parse(strings.ReplaceAll(decoderTmpl, "\n", "")))
 	tmpl = template.Must(tmpl.Parse(modelTmpl))
 
