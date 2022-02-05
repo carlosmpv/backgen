@@ -1,9 +1,11 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"path"
+	"strings"
 
 	"github.com/carlosmpv/backgen/tmpls"
 )
@@ -32,21 +34,21 @@ func main() {
 
 	renderArgs := tmpls.MakeRenderArgs(os.Args[1], path.Base(dir), dt)
 
-	modelsFile, err := os.Create("models.go")
+	modelsFile, err := os.Create(fmt.Sprintf("%s_models.go", strings.ToLower(renderArgs.Name)))
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	tmpls.RenderModel(renderArgs, modelsFile)
 
-	repoFile, err := os.Create("repository.go")
+	repoFile, err := os.Create(fmt.Sprintf("%s_repository.go", strings.ToLower(renderArgs.Name)))
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	tmpls.RenderRepository(renderArgs, repoFile)
 
-	apiFile, err := os.Create("api.go")
+	apiFile, err := os.Create(fmt.Sprintf("%s_api.go", strings.ToLower(renderArgs.Name)))
 	if err != nil {
 		log.Fatal(err)
 	}
