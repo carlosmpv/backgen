@@ -87,6 +87,22 @@ var {{ .Name }}RegistryKey = []byte("{{ .Name }}RegistryKey")
 
 type {{ .Name }}Registry []string
 
+func (il *{{ .Name }}Registry) Migrate(pub func([]byte, []byte) error, sub func([]byte) ([]byte, error)) error {
+	if err := il.Load(sub); err == nil {
+		return nil
+	}
+
+	*il = {{ .Name }}Registry{}
+
+	buff := new(bytes.Buffer)
+	err := gob.NewEncoder(buff).Encode(il)
+	if err != nil {
+		return err
+	}
+
+	return pub({{ .Name }}RegistryKey, buff.Bytes())
+}
+
 func (il *{{ .Name }}Registry) Register(pub func([]byte, []byte) error, id string) error {
 	*il = append(*il, id)
 

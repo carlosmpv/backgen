@@ -13,14 +13,8 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-type pubsub interface {
-	Get([]byte) ([]byte, error)
-	Set([]byte, []byte) error
-}
-
-func New{{ .Name }}API(ps pubsub) *fiber.App {
+func New{{ .Name }}API(repo *{{ .Name }}Repository) *fiber.App {
 	api := fiber.New()
-	repo := New{{ .Name }}Repository(ps)
 
 	api.Get("/", func(c *fiber.Ctx) error {
 		result, err := repo.GetAll()
@@ -48,25 +42,23 @@ func New{{ .Name }}API(ps pubsub) *fiber.App {
 	})
 
 	api.Get("/:id", func(c *fiber.Ctx) error {
-		model := New{{ .Name }}(c.Params("id"))
-		err := model.Load(ps.Get)
+		result, err := repo.GetByID(c.Params("id"))
 		if err != nil {
 			return err
 		}
 
-		return c.JSON(model)
+		return c.JSON(result)
 	})
 
 	api.Patch("/:id", func(c *fiber.Ctx) error {
-		id := c.Params("id")
-		model := New{{ .Name }}(id)
-		
+		model := New{{ .Name }}(c.Params("id"))
+
 		err := c.BodyParser(model)
 		if err != nil {
 			return err
 		}
 
-		err = model.Save(ps.Set)
+		err = repo.Edit(model)
 		if err != nil {
 			return err
 		}
@@ -85,16 +77,13 @@ func New{{ .Name }}API(ps pubsub) *fiber.App {
 
 	{{ range $n, $t := .Fields }}
 	api.Put("/:id/{{ lower $n | print }}", func(c *fiber.Ctx) error {
-		id := c.Params("id")
-		model := New{{ $.Name }}(id)
-
 		var value {{ $t }}
 		err := c.BodyParser(&value)
 		if err != nil {
 			return err
 		}
 
-		err = model.Set{{ $n }}(ps.Set, value)
+		err = repo.Set{{ $.Name }}{{ $n }}(c.Params("id"), value)
 		if err != nil {
 			return err
 		}
@@ -103,14 +92,12 @@ func New{{ .Name }}API(ps pubsub) *fiber.App {
 	})
 
 	api.Get("/:id/{{ lower $n | print }}", func(c *fiber.Ctx) error {
-		id := c.Params("id")
-		model := New{{ $.Name }}(id)
-		ret, err := model.Get{{ $n }}(ps.Get)
+		result, err := repo.Get{{ $.Name }}{{ $n }}(c.Params("id"))
 		if err != nil {
 			return err
 		}
 
-		return c.JSON(ret)
+		return c.JSON(result)
 	})
 	{{ end }}
 
